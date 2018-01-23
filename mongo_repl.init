@@ -1,0 +1,5 @@
+mongo 10.40.0.17
+db = (new Mongo('10.40.0.17:27017')).getDB('graylog')
+rs.initiate({"_id":"graylog","members":[{"_id":0,"host":"10.40.0.17:27017"},
+                                        {"_id":1,"host":"10.40.0.18:27017"},
+                                        {"_id":2,"host":"10.40.0.19:27017"}]})

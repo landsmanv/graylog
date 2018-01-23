@@ -1,0 +1,75 @@
+version: '3.4'
+services:
+  mongodb:
+    image: mongo:3.6.2
+    container_name: mongo_01
+    network_mode: host
+    restart: always
+    command: mongod --replSet graylog
+    volumes:
+      - /srv/data/mongo/:/data/db
+      - /etc/localtime:/etc/localtime:ro
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:5.6.6
+    container_name: es_01
+    network_mode: host
+    restart: always
+    environment:
+      - cluster.name=graylog
+      - http.host=10.40.0.17
+      - "ES_JAVA_OPTS=-Xms1536m \
+                      -Xmx1536m \
+                      -Dcom.sun.management.jmxremote \
+                      -Dcom.sun.management.jmxremote.port=54321 \
+                      -Dcom.sun.management.jmxremote.ssl=false \
+                      -Dcom.sun.management.jmxremote.authenticate=false"
+      - xpack.security.enabled=false
+      - discovery.zen.ping.unicast.hosts=10.40.0.17,10.40.0.18,10.40.0.19
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+      - /etc/localtime:/etc/localtime:ro
+  graylog:
+    image: graylog/graylog:2.4.1-1
+    container_name: gl_01
+    network_mode: host
+    restart: always
+    environment:
+      - GRAYLOG_ROOT_TIMEZONE=Europe/Prague
+      - GRAYLOG_PASSWORD_SECRET=l06570r3_p455w0rd
+      - GRAYLOG_ROOT_PASSWORD_SHA2=ff8f7bb218cfe0af1c5b284d60ca8a475ca7ef26859246e6a06360b195bdc7c4
+      - GRAYLOG_ELASTICSEARCH_HTTP_ENABLED=TRUE
+      - GRAYLOG_IS_MASTER=TRUE
+      - GRAYLOG_ELASTICSEARCH_SHARDS=1
+      - GRAYLOG_ELASTICSEARCH_REPLICAS=2
+      - GRAYLOG_ELASTICSEARCH_MAX_NUMBER_OF_INDICES=100
+      - GRAYLOG_ELASTICSEARCH_HOSTS=http://10.40.0.17:9200,http://10.40.0.18:9200,http://10.40.0.19:9200
+      - GRAYLOG_MONGODB_URI=mongodb://10.40.0.17:27017,10.40.0.18:27017,10.40.0.19:27017/graylog?replicaSet=graylog
+      - GRAYLOG_WEB_ENDPOINT_URI=http://10.40.0.17:9000/api
+      - "GRAYLOG_SERVER_JAVA_OPTS=-Xms1536m \
+                                  -Xmx1536m \
+                                  -XX:+UnlockExperimentalVMOptions \
+                                  -XX:+UseCGroupMemoryLimitForHeap \
+                                  -XX:NewRatio=1 \
+                                  -XX:MaxMetaspaceSize=256m \
+                                  -server \
+                                  -XX:+ResizeTLAB \
+                                  -XX:+UseConcMarkSweepGC \
+                                  -XX:+CMSConcurrentMTEnabled \
+                                  -XX:+CMSClassUnloadingEnabled \
+                                  -XX:+UseParNewGC \
+                                  -XX:-OmitStackTraceInFastThrow \
+                                  -Dcom.sun.management.jmxremote \
+                                  -Dcom.sun.management.jmxremote.port=12345 \
+                                  -Dcom.sun.management.jmxremote.ssl=false \
+                                  -Dcom.sun.management.jmxremote.authenticate=false"
+    volumes:
+      - graylog_journal:/usr/share/graylog/data/journal
+      - /etc/localtime:/etc/localtime:ro
+volumes:
+  mongo_data:
+  es_data:
+  graylog_journal:
